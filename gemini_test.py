@@ -113,27 +113,3 @@ def verify_claim(claim: str, sources: List[str]) -> Dict[str, Any]:
             "supporting_sources": [],
             "refuting_sources": []
         }
-
-
-claims = extract_claims("The Eiffel Tower is an iconic lattice structure located in Paris, France. It was completed in 1889 and stands at a height of 300 meters. The tower was designed by Gustave Eiffel and has become a symbol of French culture and engineering.")
-
-for claim in claims:
-    print(f"\nClaim: {claim}")
-    sources = custom_search_api(claim)
-    if not sources:
-        print("No sources found. Can not verify claim.")
-        continue    
-    result = verify_claim(claim, sources)
-    print(json.dumps(result, indent=2))
-
-
-claims = extract_claims("Nepal is a part of India. It is a country with open access to sea. The capital city of Nepal is Kathmandu. It is know for its rich diversity and cultural heritage.")
-
-for claim in claims:
-    print(f"\nClaim: {claim}")
-    sources = custom_search_api(claim)
-    if not sources:
-        print("No sources found. Can not verify claim.")
-        continue    
-    result = verify_claim(claim, sources)
-    print(json.dumps(result, indent=2))
