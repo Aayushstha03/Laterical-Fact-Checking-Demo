@@ -15,11 +15,26 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_api
 def extract_claims(text: str) -> List[str]:
     system_message = SystemMessage(content="""
     You are an expert at extracting claims from text.
-    Your task is to identify and list all claims present, true or false,
-    in the given text. Each claim should be a single, verifiable statement.
-    Consider various forms of claims, including assertions, statistics, and quotes.
-    Output a JSON array of strings, and nothing else.
-    Do not include any additional text or formatting, like markdown code blocks.
+    Your task is to identify and list all claims present, true or false, in the given text. Each claim should be a verifiable statement.
+    
+    If the input content is very lengthy, then pick the major claims.
+
+    Don't repeat the same claim.
+
+    For each claim, also provide the original part of the sentence from which the claim is derived.
+    Present the claims as a JSON array of objects. Each object should have two keys:
+    - "claim": the extracted claim in a single verifiable statement.
+    - "original_text": the portion of the original text that supports or contains the claim.  
+    Do not include any additional text or commentary.
+    Return the output strictly as a JSON array of objects following this schema:
+    [
+        {
+            "claim": "extracted claim here",
+            "original_text": "original text portion here"
+        },
+        ...
+    ]
+    Output the result as valid JSON, strictly adhering to the defined schema. Ensure there are no markdown codes or additional elements included in the output. Do not add anything else. Return only JSON.
     """)
 
     human_message = HumanMessage(content=f"Extract factual claims from this text: {text}")
@@ -88,8 +103,10 @@ def verify_claim(claim: str, sources: List[str]) -> Dict[str, Any]:
     {
         "claim": "...",
         "assessment": "supported" or "refuted" or "Insufficient information",
-        "confidence_score": a number between 0 and 1 (1 means fully confident the claim is true, 0 means fully confident the claim is false),
-        "supporting_sources": [list of sources that support the claim],
+        "summary": "Why is this claim correct and if it isn't correct, then what's correct. In a single line.",
+        "fixed_original_text": "If the assessment is False then correct the original text (keeping everything as it is and just fix the fact in the part of the text)",
+        "confidence_score": a percentage number between 0 and 100 (100 means fully confident that the decision you have made is correct, 0 means you are completely unsure),
+        "supporting_sources": [list of sources that support the claim],    
         "refuting_sources": [list of sources that refute the claim]
     }
     Do not include any additional text or formatting, like markdown code blocks.
@@ -97,8 +114,7 @@ def verify_claim(claim: str, sources: List[str]) -> Dict[str, Any]:
 
     human_message = HumanMessage(content=f"""
     Claim: "{claim}"
-    Sources:
-    {combined_sources}
+    Sources: {combined_sources}
     """)
 
     response = llm.invoke([system_message, human_message])
@@ -109,6 +125,7 @@ def verify_claim(claim: str, sources: List[str]) -> Dict[str, Any]:
         return {
             "claim": claim,
             "assessment": "Insufficient information",
+            "summary": "Unable to determine due to parsing error.",
             "confidence_score": 0.5,
             "supporting_sources": [],
             "refuting_sources": []
