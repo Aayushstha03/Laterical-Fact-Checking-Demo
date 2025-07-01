@@ -4,7 +4,6 @@ import jsonlines
 from gemini_test import custom_search_api, verify_claim
 
 
-
 # Translation dictionary for mapping AVERITEC labels to verification output labels
 label_translation = {
     "Supported": "supported",
@@ -12,12 +11,11 @@ label_translation = {
     "Refuted": "refuted",
     "Refutes":"refuted",    
     "Not Enough Evidence": "Insufficient information",
-    
-}
+    }
 
 # Evaluate a single claim
 def evaluate_instance(claim, label):
-    evaluation_result = False        
+         
     predicted_label = "Insufficient information"
     verification_result = {}
 
@@ -38,9 +36,9 @@ def evaluate_instance(claim, label):
         "verification_result": verification_result
     }
 
+
 # Run benchmark on the dataset
 def run_benchmark(n=100, output_path="new_eval_results.jsonl",dataset_path="./data/averitec_dev.json"):
-
    
     results = []
 
