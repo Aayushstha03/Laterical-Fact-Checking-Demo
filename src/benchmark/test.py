@@ -1,20 +1,21 @@
-import os
-import pandas as pd
+import json
 import jsonlines
 
 from gemini_test import custom_search_api, verify_claim
 
 
-# Path to the fever dataset
-path = "./train.jsonl"
 
-# Translation dictionary for FEVER labels to local format
-fever_label_translation={
-    "SUPPORTS": "supported",
-    "REFUTES": "refuted",
-    "NOT ENOUGH INFO": "Insufficient information",}
+# Translation dictionary for mapping AVERITEC labels to verification output labels
+label_translation = {
+    "Supported": "supported",
+    "Supports":"supported",
+    "Refuted": "refuted",
+    "Refutes":"refuted",    
+    "Not Enough Evidence": "Insufficient information",
+    
+}
 
-# Evaluate a single instance of claim and label
+# Evaluate a single claim
 def evaluate_instance(claim, label):
     evaluation_result = False        
     predicted_label = "Insufficient information"
@@ -26,8 +27,8 @@ def evaluate_instance(claim, label):
         verification_result = verify_claim(claim, sources)
         predicted_label = verification_result.get("assessment", "Insufficient information")
 
-   
-    evaluation_result = predicted_label == fever_label_translation.get(label, "")
+    
+    evaluation_result = predicted_label == label_translation.get(label,"")
 
     return {
         "claim": claim,
@@ -37,22 +38,27 @@ def evaluate_instance(claim, label):
         "verification_result": verification_result
     }
 
+# Run benchmark on the dataset
+def run_benchmark(n=100, output_path="new_eval_results.jsonl",dataset_path="./data/averitec_dev.json"):
 
-# Run the benchmark on the FEVER dataset and save results to a JSONL file
-def run_benchmark(n=100,output_path="fever_eval_results.jsonl"):
-    results = []  
+   
+    results = []
 
-    with jsonlines.open(path) as reader, jsonlines.open(output_path, mode='w') as writer:
-        for i, item in enumerate(reader):
-            # Limit to n instances for testing
+    # Read JSON array from the dataset
+    with open(dataset_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+ 
+    with jsonlines.open(output_path, mode='w') as writer:
+        for i, item in enumerate(data):
+            # Limit the number of instances processed
             if i >= n:
                 break
 
-            # Extract parameters
+            # Extract parameters from the item
             claim = item.get("claim", "")
             label = item.get("label", "")
 
-            # Run evaluation
             try:
                 result = evaluate_instance(claim, label)
             except Exception as e:
@@ -65,29 +71,21 @@ def run_benchmark(n=100,output_path="fever_eval_results.jsonl"):
                     "verification_result": {"error": str(e)}
                 }
 
-            # Print the result
             print(f"[{i+1}] Claim: {claim}")
             print(f"Label: {label}")
             print(f"Predicted: {result['predicted_label']}")
             print(f"Correct? {result['evaluation_result']}")
             print("-" * 50)
 
+            result["label_justification"]=item.get("justification", "")
             results.append(result)
-            writer.write(result)  # Write each result to JSONL file
-    
-    
+            writer.write(result)
+
+    # Accuracy Summary
     correct = sum(1 for r in results if r["evaluation_result"])
     print(f"\nAccuracy: {correct}/{len(results)} = {correct / len(results):.2%}")
 
     return results
-      
-                     
 
-run_benchmark(100)
-
-           
-
-
-
-   
-    
+# Run the benchmark
+# run_benchmark(100,"averitec_eval_results_1.jsonl")
